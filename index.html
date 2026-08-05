@@ -379,7 +379,7 @@
                                     <label for="enableReasoning">پشتیبانی از Reasoning</label>
                                 </div>
                             </div>
-                            <!-- اضافه شدن چک‌باکس کراس پروکسی -->
+                            <!-- چک‌باکس کراس پروکسی -->
                             <div class="col-md-4">
                                 <div class="checkbox-group">
                                     <input type="checkbox" id="useProxyFallback" checked>
@@ -1011,7 +1011,6 @@
             const rawModels = document.getElementById('modelNames').value.trim();
             const isStream = document.getElementById('streamMode').checked;
             const enableReasoning = document.getElementById('enableReasoning').checked;
-            // بررسی وضعیت چک‌باکس کراس پروکسی
             const useProxyFallback = document.getElementById('useProxyFallback').checked;
 
             if (!baseUrl || !apiKey || !rawModels) {
@@ -1049,11 +1048,10 @@
                 `;
             });
 
+            // ✅ اصلاح کلیدی: حذف هدرهای HTTP-Referer و X-Title که AnyModel را دچار خطای CORS می‌کردند
             const headers = { 
                 'Content-Type': 'application/json', 
-                'Authorization': `Bearer ${apiKey}`,
-                'HTTP-Referer': window.location.href,
-                'X-Title': 'API Manager Tester'
+                'Authorization': `Bearer ${apiKey}`
             };
 
             for (let i = 0; i < modelsList.length; i++) {
@@ -1067,7 +1065,13 @@
                 statusTd.textContent = 'در حال تست...';
                 statusTd.className = 'status-pending';
 
-                let body = { model, messages: [{ role: 'user', content: 'hi' }], max_tokens: 2, stream: isStream };
+                // ✅ اصلاح کلیدی: ساخت مجدد body با max_tokens امن‌تر (مقدار 10)
+                let body = { 
+                    model: model, 
+                    messages: [{ role: 'user', content: 'hi' }], 
+                    max_tokens: 10, 
+                    stream: isStream 
+                };
 
                 if (enableReasoning) {
                     body.reasoning_effort = 'high';
@@ -1081,14 +1085,13 @@
                     try {
                         resObj = await makeSingleRequest(baseUrl, headers, body);
                     } catch (directErr) {
-                        // اگر چک‌باکس کراس‌ پروکسی فعال باشد و آدرس ورکر تعریف شده باشد، از ورکر استفاده کن
                         if (useProxyFallback && CLOUDFLARE_WORKER_URL) {
                             const proxyUrl = `${CLOUDFLARE_WORKER_URL}?url=${encodeURIComponent(baseUrl)}`;
                             resObj = await makeSingleRequest(proxyUrl, headers, body);
                             connectionType = 'کلودفلر ورکر';
                             connectionClass = 'mode-proxy';
                         } else {
-                            throw directErr; // اگر چک‌باکس خاموش است، خطا را به بخش catch اصلی بفرست
+                            throw directErr;
                         }
                     }
 
