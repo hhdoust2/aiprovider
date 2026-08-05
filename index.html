@@ -216,7 +216,6 @@
         .table-responsive {
             width: 100%;
             overflow-x: auto;
-            margin-top: 20px;
             border-radius: var(--radius-md);
             border: 1px solid var(--border);
         }
@@ -398,9 +397,26 @@
                             </div>
                         </div>
 
-                        <button class="btn btn-primary w-100 py-2 fw-bold text-white fs-6" id="startBtn" onclick="testBatchModels()">
+                        <button class="btn btn-primary w-100 py-2 fw-bold text-white fs-6 mb-3" id="startBtn" onclick="testBatchModels()">
                             <i class="fa-solid fa-play me-2"></i> شروع تست گروهی مدل‌ها
                         </button>
+
+                        <!-- Sort & Export Controller -->
+                        <div class="d-none justify-content-between align-items-center mt-3 mb-2 flex-wrap gap-2" id="sortControl">
+                            <div class="d-flex align-items-center gap-2">
+                                <span class="text-muted small fw-bold"><i class="fa-solid fa-sort me-1"></i> مرتب‌سازی:</span>
+                                <select id="sortStatusSelect" class="form-select form-select-sm" style="width: auto;" onchange="sortResultsByStatus()">
+                                    <option value="default">پیش‌فرض (ترتیب ورودی)</option>
+                                    <option value="success-first">اول موفق‌ها (✅)</option>
+                                    <option value="error-first">اول خطاها (❌)</option>
+                                </select>
+                            </div>
+
+                            <!-- دکمه خروجی مدل‌های موفق -->
+                            <button class="btn btn-sm btn-outline-success fw-bold d-flex align-items-center gap-1" onclick="exportSuccessfulModels()">
+                                <i class="fa-solid fa-file-export"></i> دانلود مدل‌های موفق (با ,)
+                            </button>
+                        </div>
 
                         <div class="table-responsive">
                             <table id="resultsTable" style="display: none;">
@@ -487,8 +503,7 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // آدرس اختصاصی کلودفلر ورکر شما برای رفع مشکل CORS
-        const CLOUDFLARE_WORKER_URL = "https://ai-crossproxy.aialsabela.workers.dev";
+        const CLOUDFLARE_WORKER_URL = "";
 
         const defaultData = {
           "version": "1.0",
@@ -928,6 +943,81 @@
             return { response, latency };
         }
 
+        // توابع مرتبط با مرتب‌سازی نتایج جدول
+        function sortResultsByStatus() {
+            const tbody = document.getElementById('resultsBody');
+            const sortValue = document.getElementById('sortStatusSelect').value;
+            const rows = Array.from(tbody.querySelectorAll('tr'));
+
+            if (sortValue === 'default') {
+                rows.sort((a, b) => {
+                    return parseInt(a.id.replace('row-', '')) - parseInt(b.id.replace('row-', ''));
+                });
+            } else {
+                rows.sort((a, b) => {
+                    const statusA = getStatusWeight(a);
+                    const statusB = getStatusWeight(b);
+                    
+                    if (sortValue === 'success-first') {
+                        return statusA - statusB;
+                    } else if (sortValue === 'error-first') {
+                        return statusB - statusA;
+                    }
+                    return 0;
+                });
+            }
+
+            rows.forEach(row => tbody.appendChild(row));
+        }
+
+        function getStatusWeight(row) {
+            const statusEl = row.querySelector('[id^="status-"]');
+            if (!statusEl) return 99;
+            
+            const text = statusEl.textContent;
+            if (text.includes('موفق')) return 1;
+            if (text.includes('خطا') || text.includes('قطع')) return 2;
+            if (text.includes('در حال')) return 3;
+            if (text.includes('صف')) return 4;
+            return 5;
+        }
+
+        // تابع دانلود مدل‌های موفق (جدا شده با کاما)
+        function exportSuccessfulModels() {
+            const tbody = document.getElementById('resultsBody');
+            const rows = tbody.querySelectorAll('tr');
+            const successfulModels = [];
+
+            rows.forEach(row => {
+                const statusEl = row.querySelector('[id^="status-"]');
+                if (statusEl && statusEl.textContent.includes('موفق')) {
+                    const modelNameEl = row.querySelector('.model-cell span');
+                    if (modelNameEl) {
+                        successfulModels.push(modelNameEl.textContent.trim());
+                    }
+                }
+            });
+
+            if (successfulModels.length === 0) {
+                showToast('هیچ مدل موفقی برای دانلود وجود ندارد.', 'warning');
+                return;
+            }
+
+            const exportText = successfulModels.join(', ');
+            const blob = new Blob([exportText], { type: 'text/plain;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `successful_models_${new Date().toISOString().slice(0, 10)}.txt`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+
+            showToast(`${successfulModels.length} مدل موفق استخراج و دانلود شد.`, 'success');
+        }
+
         async function testBatchModels() {
             const baseUrl = document.getElementById('baseUrl').value.trim();
             const apiKey = document.getElementById('apiKey').value.trim();
@@ -944,8 +1034,13 @@
 
             const table = document.getElementById('resultsTable');
             const tbody = document.getElementById('resultsBody');
+            const sortControl = document.getElementById('sortControl');
+            
             tbody.innerHTML = '';
             table.style.display = 'table';
+            
+            sortControl.classList.remove('d-none');
+            sortControl.classList.add('d-flex');
 
             modelsList.forEach((model, index) => {
                 tbody.innerHTML += `
@@ -965,7 +1060,6 @@
                 `;
             });
 
-            // افزودن هدرهای لازم برای تمامی ارائه‌دهنده‌ها از جمله OpenRouter/Unorouter
             const headers = { 
                 'Content-Type': 'application/json', 
                 'Authorization': `Bearer ${apiKey}`,
@@ -995,7 +1089,6 @@
                     let connectionType = 'مستقیم';
                     let connectionClass = 'mode-direct';
 
-                    // ابتدا تست مستقیم؛ در صورت خطا عبور از ورکر کلودفلر اختصاصی شما
                     try {
                         resObj = await makeSingleRequest(baseUrl, headers, body);
                     } catch {
@@ -1042,6 +1135,8 @@
                     statusTd.className = 'status-error';
                     resTd.innerHTML = `${escapeHtml(err.message)} <button class="copy-btn" onclick="copyToClipboard('${escapeHtml(err.message)}', 'کپی شد!')"><i class="fa-solid fa-copy"></i></button>`;
                 }
+
+                sortResultsByStatus();
 
                 if (i < modelsList.length - 1) {
                     await delay(1000);
