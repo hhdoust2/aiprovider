@@ -1,4 +1,4 @@
-const CACHE_NAME = 'api-manager-v1';
+const CACHE_NAME = 'api-manager-v2'; // هر بار تغییر مهمی دادید، این عدد رو افزایش بدید
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
@@ -37,14 +37,38 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
-// پاسخگویی به درخواست‌ها (اول کش، اگر نبود شبکه)
+// پاسخگویی به درخواست‌ها
 self.addEventListener('fetch', (event) => {
+  const req = event.request;
+
+  // فقط درخواست‌های GET رو کنترل کن؛ درخواست‌های POST (مثل چت/API) همیشه مستقیم
+  // به شبکه برن، چون Cache API اصلاً برای متدهای غیر GET طراحی نشده.
+  if (req.method !== 'GET') {
+    return; // بدون respondWith، مرورگر خودش مستقیم fetch رو انجام می‌ده
+  }
+
+  // برای ناوبری (باز کردن صفحه) و خود index.html: همیشه اول شبکه رو امتحان کن
+  // تا آخرین نسخه رو بگیری؛ فقط اگر آفلاین بودی، از کش استفاده کن.
+  // این دقیقاً همون چیزیه که قبلاً نبود و باعث می‌شد نسخه‌ی قدیمی همیشه سرو بشه.
+  const isHTMLRequest = req.mode === 'navigate' || req.url.endsWith('/index.html') || req.url.endsWith('/');
+
+  if (isHTMLRequest) {
+    event.respondWith(
+      fetch(req)
+        .then((networkResponse) => {
+          const clone = networkResponse.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(req, clone));
+          return networkResponse;
+        })
+        .catch(() => caches.match(req))
+    );
+    return;
+  }
+
+  // برای بقیه‌ی فایل‌های ثابت (فونت، CSS، آیکون): همون کش-اول قبلی برای سرعت بیشتر
   event.respondWith(
-    caches.match(event.request).then((cachedResponse) => {
-      if (cachedResponse) {
-        return cachedResponse;
-      }
-      return fetch(event.request);
+    caches.match(req).then((cachedResponse) => {
+      return cachedResponse || fetch(req);
     })
   );
 });
