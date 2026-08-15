@@ -1089,7 +1089,7 @@
                     } catch (directErr) {
                         // اگر چک‌باکس کراس‌ پروکسی فعال باشد و آدرس ورکر تعریف شده باشد، از ورکر استفاده کن
                         if (useProxyFallback && CLOUDFLARE_WORKER_URL) {
-                            const proxyUrl = `${CLOUDFLARE_WORKER_URL}/?url=${encodeURIComponent(baseUrl)}`;
+                            const proxyUrl = `${CLOUDFLARE_WORKER_URL}/${baseUrl}`;
                             resObj = await makeSingleRequest(proxyUrl, headers, body);
                             connectionType = 'کلودفلر ورکر';
                             connectionClass = 'mode-proxy';
