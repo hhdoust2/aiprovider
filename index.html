@@ -83,6 +83,7 @@
             box-shadow: var(--shadow);
             margin-bottom: 24px;
             overflow: hidden;
+            height: 100%;
         }
 
         .card-header {
@@ -97,26 +98,65 @@
             background: #ffffff;
             border: 1px solid var(--border);
             border-radius: var(--radius-md);
-            padding: 16px;
-            margin-bottom: 14px;
+            padding: 12px;
+            margin-bottom: 0;
             transition: transform 0.2s ease, box-shadow 0.2s ease;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
         }
 
         .item-card:hover {
             box-shadow: 0 6px 18px rgba(0,0,0,0.04);
         }
 
+        /* ساختار ثابت برای کارت پرووایدرها */
+        .provider-card {
+            min-height: 250px;
+        }
+
+        .provider-header-section {
+            flex-shrink: 0;
+        }
+
+        .provider-models-section {
+            margin-top: auto;
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+        }
+
+        /* فضای ۵ خطی با اسکرول برای مدل‌ها */
+        .models-scroll-container {
+            height: 135px;
+            max-height: 135px;
+            overflow-y: auto;
+            align-content: flex-start;
+            padding-left: 2px;
+        }
+
+        /* استایل اسکرول‌بار ظریف */
+        .models-scroll-container::-webkit-scrollbar {
+            width: 4px;
+        }
+        .models-scroll-container::-webkit-scrollbar-thumb {
+            background: #e0d5ce;
+            border-radius: 4px;
+        }
+
         .badge-model {
             background-color: #fcf8f6;
             color: var(--primary);
             border: 1px solid #fcdcd5;
-            font-size: 0.8rem;
-            padding: 6px 12px;
-            border-radius: 8px;
+            font-size: 0.72rem;
+            padding: 3px 7px;
+            border-radius: 6px;
             display: inline-flex;
             align-items: center;
-            gap: 6px;
-            margin: 3px;
+            gap: 4px;
+            margin: 2px;
             cursor: pointer;
             transition: all 0.2s;
             font-family: 'JetBrains Mono', monospace;
@@ -143,7 +183,7 @@
 
         .url-text {
             color: var(--text-muted);
-            font-size: 0.85rem;
+            font-size: 0.75rem;
             font-family: 'JetBrains Mono', monospace;
             word-break: break-all;
         }
@@ -153,11 +193,11 @@
             direction: ltr;
             text-align: left;
             background: #fcf8f6;
-            padding: 8px 12px;
+            padding: 6px 8px;
             border-radius: var(--radius-md);
             border: 1px solid var(--border);
             word-break: break-all;
-            font-size: 0.88rem;
+            font-size: 0.78rem;
             color: var(--text-main);
             flex-grow: 1;
         }
@@ -256,13 +296,20 @@
         .badge-mode { padding: 3px 8px; border-radius: 6px; font-size: 11px; font-weight: 700; font-family: 'JetBrains Mono', monospace; }
         .mode-direct { background: #f1f5f9; color: #475569; }
         .mode-proxy { background: #dcfce7; color: #166534; }
+
+        @media (max-width: 576px) {
+            .item-card { padding: 10px; }
+            .btn-action { padding: 2px 5px !important; font-size: 0.7rem !important; }
+            .key-box { font-size: 0.7rem; padding: 4px 6px; }
+            .card-header { padding: 12px 14px; font-size: 0.9rem; }
+        }
     </style>
 </head>
 <body>
 
     <!-- Navbar -->
     <nav class="navbar navbar-expand-lg sticky-top mb-4">
-        <div class="container">
+        <div class="container-fluid px-lg-5">
             <a class="navbar-brand d-flex align-items-center gap-2 mb-2 mb-lg-0" href="#">
                 <i class="fa-solid fa-bolt text-danger fs-4"></i>
                 <span>مدیریت API Key و سرویس‌ها</span>
@@ -297,7 +344,7 @@
         </div>
     </nav>
 
-    <div class="container">
+    <div class="container-fluid px-lg-5">
         <!-- Toast Notification Container -->
         <div id="toastContainer" class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 1100;"></div>
 
@@ -305,26 +352,36 @@
             
             <!-- TAB 1: API Manager -->
             <div class="tab-pane fade show active" id="tab-manager" role="tabpanel">
-                <!-- Section 1: API Keys -->
-                <div class="card">
-                    <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
-                        <span><i class="fa-solid fa-shield-halved me-2 text-primary"></i> کلیدهای API (API Keys)</span>
-                        <button class="btn btn-primary btn-sm" onclick="openAddKeyModal()">
-                            <i class="fa-solid fa-plus me-1"></i> افزودن کلید جدید
-                        </button>
+                <div class="row g-4">
+                    <!-- Section 1: API Keys -->
+                    <div class="col-lg-6">
+                        <div class="card">
+                            <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+                                <span><i class="fa-solid fa-shield-halved me-2 text-primary"></i> کلیدهای API (API Keys)</span>
+                                <button class="btn btn-primary btn-sm" onclick="openAddKeyModal()">
+                                    <i class="fa-solid fa-plus me-1"></i> افزودن کلید
+                                </button>
+                            </div>
+                            <div class="card-body p-2 p-md-3">
+                                <div class="row g-2" id="apiKeysContainer"></div>
+                            </div>
+                        </div>
                     </div>
-                    <div class="card-body p-3" id="apiKeysContainer"></div>
-                </div>
 
-                <!-- Section 2: Providers & Models -->
-                <div class="card">
-                    <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
-                        <span><i class="fa-solid fa-server me-2 text-primary"></i> تنظیمات سرویس‌ها و مدل‌ها</span>
-                        <button class="btn btn-primary btn-sm" onclick="openAddProviderModal()">
-                            <i class="fa-solid fa-plus me-1"></i> افزودن سرویس جدید
-                        </button>
+                    <!-- Section 2: Providers & Models -->
+                    <div class="col-lg-6">
+                        <div class="card">
+                            <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+                                <span><i class="fa-solid fa-server me-2 text-primary"></i> تنظیمات سرویس‌ها و مدل‌ها</span>
+                                <button class="btn btn-primary btn-sm" onclick="openAddProviderModal()">
+                                    <i class="fa-solid fa-plus me-1"></i> افزودن سرویس
+                                </button>
+                            </div>
+                            <div class="card-body p-2 p-md-3">
+                                <div class="row g-2" id="providersContainer"></div>
+                            </div>
+                        </div>
                     </div>
-                    <div class="card-body p-3" id="providersContainer"></div>
                 </div>
             </div>
 
@@ -379,7 +436,6 @@
                                     <label for="enableReasoning">پشتیبانی از Reasoning</label>
                                 </div>
                             </div>
-                            <!-- اضافه شدن چک‌باکس کراس پروکسی -->
                             <div class="col-md-4">
                                 <div class="checkbox-group">
                                     <input type="checkbox" id="useProxyFallback" checked>
@@ -536,39 +592,41 @@
             const container = document.getElementById('apiKeysContainer');
             container.innerHTML = '';
             if (!appData.api_keys || appData.api_keys.length === 0) {
-                container.innerHTML = `<p class="text-muted text-center py-3 m-0">هیچ کلیدی یافت نشد.</p>`;
+                container.innerHTML = `<p class="text-muted text-center py-3 m-0 w-100">هیچ کلیدی یافت نشد.</p>`;
                 return;
             }
 
             appData.api_keys.forEach((item, index) => {
-                const card = document.createElement('div');
-                card.className = 'item-card';
-                card.innerHTML = `
-                    <div class="d-flex justify-content-between align-items-center mb-2">
-                        <span class="badge bg-secondary text-light fs-6 fw-normal">${escapeHtml(item.label)}</span>
-                        <div>
-                            <button class="btn btn-sm btn-outline-warning py-1 px-2 me-1" onclick="openEditKeyModal(${index})"><i class="fa-solid fa-pen-to-square"></i></button>
-                            <button class="btn btn-sm btn-outline-danger py-1 px-2" onclick="deleteKey(${index})"><i class="fa-solid fa-trash"></i></button>
+                const col = document.createElement('div');
+                col.className = 'col-6 col-md-6';
+                col.innerHTML = `
+                    <div class="item-card">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="badge bg-secondary text-light fw-normal text-truncate me-1" style="max-width: 60%; font-size: 0.75rem;">${escapeHtml(item.label)}</span>
+                            <div class="d-flex gap-1">
+                                <button class="btn btn-sm btn-outline-warning btn-action p-1" onclick="openEditKeyModal(${index})"><i class="fa-solid fa-pen-to-square"></i></button>
+                                <button class="btn btn-sm btn-outline-danger btn-action p-1" onclick="deleteKey(${index})"><i class="fa-solid fa-trash"></i></button>
+                            </div>
+                        </div>
+                        <div class="d-flex align-items-center gap-1">
+                            <div class="key-box text-truncate" id="key-val-${index}">${maskKey(item.key)}</div>
+                            <button class="btn btn-outline-secondary btn-action p-1" onclick="toggleKeyVisibility(${index}, '${escapeHtml(item.key)}')">
+                                <i class="fa-solid fa-eye" id="eye-icon-${index}"></i>
+                            </button>
+                            <button class="btn btn-primary btn-action p-1 text-white" onclick="copyToClipboard('${escapeHtml(item.key)}', 'کلید API کپی شد.')" title="کپی کلید">
+                                <i class="fa-solid fa-copy"></i>
+                            </button>
                         </div>
                     </div>
-                    <div class="d-flex align-items-center gap-2">
-                        <div class="key-box" id="key-val-${index}">${maskKey(item.key)}</div>
-                        <button class="btn btn-outline-secondary py-1 px-2" onclick="toggleKeyVisibility(${index}, '${escapeHtml(item.key)}')">
-                            <i class="fa-solid fa-eye" id="eye-icon-${index}"></i>
-                        </button>
-                        <button class="btn btn-primary py-1 px-2 text-white" onclick="copyToClipboard('${escapeHtml(item.key)}', 'کلید API کپی شد.')" title="کپی کلید">
-                            <i class="fa-solid fa-copy"></i>
-                        </button>
-                    </div>
                 `;
-                container.appendChild(card);
+                container.appendChild(col);
             });
         }
 
         function maskKey(key) {
             if (!key) return '';
-            if (key.length <= 12) return '••••••••••••';
-            return key.substring(0, 6) + '••••' + key.substring(key.length - 4);
+            if (key.length <= 10) return '••••••••';
+            return key.substring(0, 4) + '••' + key.substring(key.length - 3);
         }
 
         function toggleKeyVisibility(index, fullKey) {
@@ -585,59 +643,66 @@
             }
         }
 
+        /* چیدمان اصلاح شده پرووایدرها با عنوان فیکس در بالا و مدل‌های ۵ خطی */
         function renderProviders() {
             const container = document.getElementById('providersContainer');
             container.innerHTML = '';
             const providers = extractProviders(appData);
 
             if (providers.length === 0) {
-                container.innerHTML = `<p class="text-muted text-center py-3 m-0">هیچ سرویسی تنظیم نشده است.</p>`;
+                container.innerHTML = `<p class="text-muted text-center py-3 m-0 w-100">هیچ سرویسی تنظیم نشده است.</p>`;
                 return;
             }
 
             providers.forEach((prov) => {
-                const card = document.createElement('div');
-                card.className = 'item-card';
+                const col = document.createElement('div');
+                col.className = 'col-6 col-md-6';
 
                 let modelsBadges = (prov.models || []).map(m => `
                     <span class="badge-model" onclick="copyToClipboard('${escapeHtml(m)}', 'نام مدل کپی شد.')" title="برای کپی کلیک کنید">
                         <i class="fa-solid fa-robot"></i> ${escapeHtml(m)}
-                        <i class="fa-solid fa-copy ms-1 text-muted" style="font-size:0.7rem;"></i>
                     </span>
                 `).join('');
 
                 const joinedModels = (prov.models || []).join(', ');
 
-                card.innerHTML = `
-                    <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-2">
-                        <div style="max-width: 100%;">
-                            <h5 class="m-0 text-primary fw-bold">${escapeHtml(prov.name)}</h5>
-                            <div class="d-flex align-items-center gap-2 mt-2 flex-wrap">
-                                <span class="url-text" dir="ltr"><i class="fa-solid fa-link me-1"></i>${escapeHtml(prov.url)}</span>
-                                <button class="btn btn-sm btn-outline-secondary py-0 px-2" style="font-size:0.75rem;" onclick="copyToClipboard('${escapeHtml(prov.url)}', 'آدرس URL کپی شد.')">
-                                    <i class="fa-solid fa-copy me-1"></i> کپی URL
+                col.innerHTML = `
+                    <div class="item-card provider-card">
+                        <!-- بخش هدر (ثابت در بالا) -->
+                        <div class="provider-header-section">
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <h6 class="m-0 text-primary fw-bold text-truncate" style="font-size: 0.85rem;" title="${escapeHtml(prov.name)}">${escapeHtml(prov.name)}</h6>
+                                <div class="d-flex gap-1 ms-1">
+                                    <button class="btn btn-sm btn-outline-warning btn-action p-1" onclick="openEditProviderModal('${prov.path.join('.')}')"><i class="fa-solid fa-pen-to-square"></i></button>
+                                    <button class="btn btn-sm btn-outline-danger btn-action p-1" onclick="deleteProvider('${prov.path.join('.')}')"><i class="fa-solid fa-trash"></i></button>
+                                </div>
+                            </div>
+                            <div class="d-flex align-items-center gap-1 mb-2">
+                                <span class="url-text text-truncate" dir="ltr"><i class="fa-solid fa-link me-1"></i>${escapeHtml(prov.url)}</span>
+                                <button class="btn btn-sm btn-outline-secondary btn-action p-1" style="font-size:0.65rem;" onclick="copyToClipboard('${escapeHtml(prov.url)}', 'آدرس URL کپی شد.')">
+                                    <i class="fa-solid fa-copy"></i>
                                 </button>
                             </div>
                         </div>
-                        <div class="d-flex gap-1 ms-auto">
-                            <button class="btn btn-sm btn-outline-warning py-1 px-2" onclick="openEditProviderModal('${prov.path.join('.')}')"><i class="fa-solid fa-pen-to-square"></i></button>
-                            <button class="btn btn-sm btn-outline-danger py-1 px-2" onclick="deleteProvider('${prov.path.join('.')}')"><i class="fa-solid fa-trash"></i></button>
+
+                        <!-- بخش مدل‌ها (فیکس شده ۵ خطی با ارتفاع ثابت) -->
+                        <div class="provider-models-section">
+                            <hr class="my-2" style="border-color: var(--border);">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <strong class="text-secondary" style="font-size: 0.75rem;">مدل‌ها:</strong>
+                                ${prov.models && prov.models.length > 0 ? `
+                                    <button class="btn btn-sm btn-outline-primary btn-action p-1" style="font-size:0.65rem;" onclick="copyToClipboard('${escapeHtml(joinedModels)}', 'تمام مدل‌ها کپی شدند.')" title="کپی همه مدل‌ها">
+                                        <i class="fa-solid fa-copy"></i>
+                                    </button>
+                                ` : ''}
+                            </div>
+                            <div class="d-flex flex-wrap models-scroll-container">
+                                ${modelsBadges || '<span class="text-muted small" style="font-size: 0.7rem;">بدون مدل</span>'}
+                            </div>
                         </div>
-                    </div>
-                    <hr class="my-2" style="border-color: var(--border);">
-                    <div>
-                        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
-                            <strong class="text-secondary" style="font-size: 0.85rem;">مدل‌های فعال:</strong>
-                            ${prov.models && prov.models.length > 0 ? `
-                                <button class="btn btn-sm btn-outline-primary py-0 px-2" style="font-size:0.75rem;" onclick="copyToClipboard('${escapeHtml(joinedModels)}', 'تمام مدل‌ها با علامت , کپی شدند.')">
-                                    <i class="fa-solid fa-copy me-1"></i> کپی همگی با ,
-                                </button>
-                            ` : ''}
-                        </div>
-                        <div class="d-flex flex-wrap">${modelsBadges || '<span class="text-muted small">بدون مدل</span>'}</div>
                     </div>
                 `;
-                container.appendChild(card);
+                container.appendChild(col);
             });
         }
 
@@ -1011,7 +1076,6 @@
             const rawModels = document.getElementById('modelNames').value.trim();
             const isStream = document.getElementById('streamMode').checked;
             const enableReasoning = document.getElementById('enableReasoning').checked;
-            // بررسی وضعیت چک‌باکس کراس پروکسی
             const useProxyFallback = document.getElementById('useProxyFallback').checked;
 
             if (!baseUrl || !apiKey || !rawModels) {
@@ -1054,9 +1118,6 @@
                 'Authorization': `Bearer ${apiKey}`
             };
 
-            // هدرهای HTTP-Referer و X-Title فقط مخصوص OpenRouter هستن.
-            // فرستادن این هدرها برای سرویس‌های دیگه (مثل AnyModel) می‌تونه باعث خطای
-            // CORS Preflight یا رد شدن درخواست توسط سرور بشه، پس فقط شرطی اضافه می‌شن.
             if (baseUrl.includes('openrouter.ai')) {
                 headers['HTTP-Referer'] = window.location.href;
                 headers['X-Title'] = 'API Manager Tester';
@@ -1087,14 +1148,13 @@
                     try {
                         resObj = await makeSingleRequest(baseUrl, headers, body);
                     } catch (directErr) {
-                        // اگر چک‌باکس کراس‌ پروکسی فعال باشد و آدرس ورکر تعریف شده باشد، از ورکر استفاده کن
                         if (useProxyFallback && CLOUDFLARE_WORKER_URL) {
                             const proxyUrl = `${CLOUDFLARE_WORKER_URL}/${baseUrl}`;
                             resObj = await makeSingleRequest(proxyUrl, headers, body);
                             connectionType = 'کلودفلر ورکر';
                             connectionClass = 'mode-proxy';
                         } else {
-                            throw directErr; // اگر چک‌باکس خاموش است، خطا را به بخش catch اصلی بفرست
+                            throw directErr;
                         }
                     }
 
