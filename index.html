@@ -1073,7 +1073,7 @@
                 statusTd.textContent = 'در حال تست...';
                 statusTd.className = 'status-pending';
 
-                let body = { model, messages: [{ role: 'user', content: 'hi' }], max_tokens: 2, stream: isStream };
+                let body = { model, messages: [{ role: 'user', content: 'hi' }], max_tokens: 5, stream: isStream };
 
                 if (enableReasoning) {
                     body.reasoning_effort = 'high';
