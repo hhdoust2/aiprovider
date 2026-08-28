@@ -426,6 +426,12 @@
                             <textarea id="modelNames" class="form-control code-font" rows="3" placeholder="gpt-4o, llama-3.3-70b-versatile"></textarea>
                         </div>
 
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">حداکثر توکن پاسخ (max_tokens):</label>
+                            <input type="number" id="maxTokensInput" class="form-control code-font" style="max-width: 160px;" min="1" step="1" value="5" placeholder="5">
+                            <small class="text-muted">برای مدل‌های reasoning عدد بالاتر (مثلاً ۲۰) بذار تا پاسخ خالی نگیری.</small>
+                        </div>
+
                         <div class="row mb-3">
                             <div class="col-md-4">
                                 <div class="checkbox-group">
@@ -1071,6 +1077,8 @@
             const rawModels = document.getElementById('modelNames').value.trim();
             const isStream = document.getElementById('streamMode').checked;
             const enableReasoning = document.getElementById('enableReasoning').checked;
+            const maxTokensRaw = parseInt(document.getElementById('maxTokensInput').value, 10);
+            const maxTokens = (Number.isFinite(maxTokensRaw) && maxTokensRaw > 0) ? maxTokensRaw : 5;
             // بررسی وضعیت چک‌باکس کراس پروکسی
             const useProxyFallback = document.getElementById('useProxyFallback').checked;
 
@@ -1133,7 +1141,7 @@
                 statusTd.textContent = 'در حال تست...';
                 statusTd.className = 'status-pending';
 
-                let body = { model, messages: [{ role: 'user', content: 'hi' }], max_tokens: 5, stream: isStream };
+                let body = { model, messages: [{ role: 'user', content: 'hi' }], max_tokens: maxTokens, stream: isStream };
 
                 if (enableReasoning) {
                     body.reasoning_effort = 'high';
