@@ -256,9 +256,69 @@
         .badge-mode { padding: 3px 8px; border-radius: 6px; font-size: 11px; font-weight: 700; font-family: 'JetBrains Mono', monospace; }
         .mode-direct { background: #f1f5f9; color: #475569; }
         .mode-proxy { background: #dcfce7; color: #166534; }
+
+        /* نوار پیشنهاد نصب اپ (PWA) */
+        .install-banner {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1200;
+            display: none;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 10px 18px;
+            background: linear-gradient(135deg, #FF7A45, var(--primary));
+            color: #fff;
+            box-shadow: 0 4px 16px rgba(245, 80, 54, 0.25);
+            font-size: 14px;
+            transform: translateY(-100%);
+            transition: transform .35s ease;
+        }
+        .install-banner.show { display: flex; transform: translateY(0); }
+        .install-banner .install-text { display: flex; align-items: center; gap: 8px; font-weight: 600; }
+        .install-banner .install-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+        .install-banner .btn-install {
+            background: #fff;
+            color: var(--primary);
+            border: none;
+            font-weight: 700;
+            padding: 6px 16px;
+            border-radius: 999px;
+            font-size: 13px;
+            cursor: pointer;
+        }
+        .install-banner .btn-dismiss {
+            background: transparent;
+            color: #fff;
+            border: 1px solid rgba(255,255,255,.6);
+            padding: 6px 12px;
+            border-radius: 999px;
+            font-size: 13px;
+            cursor: pointer;
+        }
+        body.has-install-banner { padding-top: 52px; }
+        @media (max-width: 576px) {
+            .install-banner { font-size: 12.5px; padding: 8px 12px; }
+            .install-banner .install-text .install-sub { display: none; }
+        }
     </style>
 </head>
 <body>
+
+    <!-- نوار پیشنهاد نصب اپ -->
+    <div class="install-banner" id="installBanner">
+        <div class="install-text">
+            <i class="fa-solid fa-mobile-screen-button"></i>
+            <span>می‌خوای این اپ رو روی گوشی/سیستمت نصب کنی؟</span>
+            <span class="install-sub">(حتی بدون اینترنت هم باز می‌شه)</span>
+        </div>
+        <div class="install-actions">
+            <button type="button" class="btn-install" id="installBtn">نصب اپ</button>
+            <button type="button" class="btn-dismiss" id="dismissInstallBtn">فعلاً نه</button>
+        </div>
+    </div>
 
     <!-- Navbar -->
     <nav class="navbar navbar-expand-lg sticky-top mb-4">
@@ -1144,13 +1204,97 @@
             }
         }
 
-        // Service Worker
+        // ===================== Service Worker + خودکار به‌روزرسانی =====================
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('./sw.js')
-                    .then((reg) => console.log('Service Worker فعال شد:', reg))
-                    .catch((err) => console.log('خطا در فعال‌سازی Service Worker:', err));
+                navigator.serviceWorker.register('./sw.js').then((reg) => {
+                    console.log('Service Worker فعال شد:', reg);
+
+                    // هر بار صفحه بارگذاری می‌شه، یه چک برای نسخه‌ی جدید بزن
+                    reg.update().catch(() => {});
+
+                    // وقتی نسخه‌ی جدیدی نصب شد، بلافاصله بهش بگو جایگزین نسخه‌ی
+                    // قبلی بشه (بدون این‌که منتظر بسته‌شدن کامل تب بمونیم)
+                    reg.addEventListener('updatefound', () => {
+                        const newWorker = reg.installing;
+                        if (!newWorker) return;
+                        newWorker.addEventListener('statechange', () => {
+                            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                                newWorker.postMessage('SKIP_WAITING');
+                            }
+                        });
+                    });
+                }).catch((err) => console.log('خطا در فعال‌سازی Service Worker:', err));
+
+                // وقتی کنترل‌کننده‌ی صفحه عوض شد (یعنی نسخه‌ی جدید فعال شد)، یک‌بار
+                // خودکار رفرش کن — همون رفتار «خودآپدیت» که می‌خواستی.
+                let refreshingAfterUpdate = false;
+                navigator.serviceWorker.addEventListener('controllerchange', () => {
+                    if (refreshingAfterUpdate) return;
+                    refreshingAfterUpdate = true;
+                    window.location.reload();
+                });
             });
+        }
+
+        // ===================== نوار پیشنهاد نصب اپ (Install Prompt) =====================
+        const installBanner = document.getElementById('installBanner');
+        const installBtn = document.getElementById('installBtn');
+        const dismissInstallBtn = document.getElementById('dismissInstallBtn');
+        let deferredInstallPrompt = null;
+
+        function isStandaloneMode() {
+            return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+        }
+
+        function showInstallBanner() {
+            if (isStandaloneMode() || localStorage.getItem('api_manager_install_dismissed') === 'true') return;
+            installBanner.classList.add('show');
+            document.body.classList.add('has-install-banner');
+        }
+
+        function hideInstallBanner() {
+            installBanner.classList.remove('show');
+            document.body.classList.remove('has-install-banner');
+        }
+
+        // مرورگرهای مبتنی بر Chromium (اندروید/ویندوز/...) این ایونت رو فقط وقتی
+        // شرایط PWA کامل باشه (manifest صحیح + service worker + https) شلیک می‌کنن
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredInstallPrompt = e;
+            showInstallBanner();
+        });
+
+        installBtn.addEventListener('click', async () => {
+            if (!deferredInstallPrompt) { hideInstallBanner(); return; }
+            deferredInstallPrompt.prompt();
+            const choice = await deferredInstallPrompt.userChoice;
+            if (choice.outcome === 'accepted') {
+                showToast('اپ با موفقیت نصب شد ✅', 'success');
+            }
+            deferredInstallPrompt = null;
+            hideInstallBanner();
+        });
+
+        dismissInstallBtn.addEventListener('click', () => {
+            localStorage.setItem('api_manager_install_dismissed', 'true');
+            hideInstallBanner();
+        });
+
+        window.addEventListener('appinstalled', () => {
+            localStorage.setItem('api_manager_install_dismissed', 'true');
+            hideInstallBanner();
+        });
+
+        // سافاری/iOS از beforeinstallprompt پشتیبانی نمی‌کنه؛ روی iOS اگه نصب‌نشده
+        // بودیم، خودمون راهنمای دستی «Add to Home Screen» رو نشون می‌دیم
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+        if (isIOS && !isStandaloneMode() && localStorage.getItem('api_manager_install_dismissed') !== 'true') {
+            const textEl = document.querySelector('#installBanner .install-text > span:not(.install-sub)');
+            if (textEl) textEl.textContent = 'برای نصب: دکمه‌ی اشتراک‌گذاری Safari رو بزن و «Add to Home Screen» رو بزن';
+            installBtn.style.display = 'none';
+            showInstallBanner();
         }
     </script>
 </body>
