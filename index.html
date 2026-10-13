@@ -432,6 +432,12 @@
                             <small class="text-muted">برای مدل‌های reasoning عدد بالاتر (مثلاً ۲۰) بذار تا پاسخ خالی نگیری.</small>
                         </div>
 
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">محدودیت سرعت (RPM - تعداد درخواست در دقیقه):</label>
+                            <input type="number" id="rpmInput" class="form-control code-font" style="max-width: 160px;" min="1" step="1" value="30" placeholder="30">
+                            <small class="text-muted">برای جلوگیری از ریت‌لیمیت، فاصله‌ی بین درخواست‌ها خودکار از روی این عدد حساب می‌شه (مثلاً ۳۰ = هر ۲ ثانیه یک درخواست). اگه خطای ۴۲۹ گرفت، خودکار صبر می‌کنه و دوباره تلاش می‌کنه.</small>
+                        </div>
+
                         <div class="row mb-3">
                             <div class="col-md-4">
                                 <div class="checkbox-group">
@@ -1079,6 +1085,10 @@
             const enableReasoning = document.getElementById('enableReasoning').checked;
             const maxTokensRaw = parseInt(document.getElementById('maxTokensInput').value, 10);
             const maxTokens = (Number.isFinite(maxTokensRaw) && maxTokensRaw > 0) ? maxTokensRaw : 5;
+            const rpmRaw = parseFloat(document.getElementById('rpmInput').value);
+            const rpm = (Number.isFinite(rpmRaw) && rpmRaw > 0) ? rpmRaw : 30;
+            const intervalMs = Math.ceil(60000 / rpm);
+            let nextAllowedTime = 0;
             // بررسی وضعیت چک‌باکس کراس پروکسی
             const useProxyFallback = document.getElementById('useProxyFallback').checked;
 
@@ -1151,19 +1161,45 @@
                     let resObj;
                     let connectionType = 'مستقیم';
                     let connectionClass = 'mode-direct';
+                    const MAX_429_RETRIES = 3;
 
-                    try {
-                        resObj = await makeSingleRequest(baseUrl, headers, body);
-                    } catch (directErr) {
-                        // اگر چک‌باکس کراس‌ پروکسی فعال باشد و آدرس ورکر تعریف شده باشد، از ورکر استفاده کن
-                        if (useProxyFallback && CLOUDFLARE_WORKER_URL) {
-                            const proxyUrl = `${CLOUDFLARE_WORKER_URL}/${baseUrl}`;
-                            resObj = await makeSingleRequest(proxyUrl, headers, body);
-                            connectionType = 'کلودفلر ورکر';
-                            connectionClass = 'mode-proxy';
-                        } else {
-                            throw directErr; // اگر چک‌باکس خاموش است، خطا را به بخش catch اصلی بفرست
+                    for (let attempt = 0; attempt <= MAX_429_RETRIES; attempt++) {
+                        // رعایت RPM: فاصله‌ی شروع درخواست‌ها حداقل intervalMs باشه
+                        const waitMs = nextAllowedTime - Date.now();
+                        if (waitMs > 0) {
+                            statusTd.textContent = `⏳ انتظار RPM (${Math.ceil(waitMs / 1000)}s)`;
+                            statusTd.className = 'status-pending';
+                            await delay(waitMs);
                         }
+                        statusTd.textContent = attempt > 0 ? `در حال تست... (تلاش ${attempt + 1})` : 'در حال تست...';
+                        nextAllowedTime = Date.now() + intervalMs;
+
+                        connectionType = 'مستقیم';
+                        connectionClass = 'mode-direct';
+                        try {
+                            resObj = await makeSingleRequest(baseUrl, headers, body);
+                        } catch (directErr) {
+                            // اگر چک‌باکس کراس‌ پروکسی فعال باشد و آدرس ورکر تعریف شده باشد، از ورکر استفاده کن
+                            if (useProxyFallback && CLOUDFLARE_WORKER_URL) {
+                                const proxyUrl = `${CLOUDFLARE_WORKER_URL}/${baseUrl}`;
+                                resObj = await makeSingleRequest(proxyUrl, headers, body);
+                                connectionType = 'کلودفلر ورکر';
+                                connectionClass = 'mode-proxy';
+                            } else {
+                                throw directErr; // اگر چک‌باکس خاموش است، خطا را به بخش catch اصلی بفرست
+                            }
+                        }
+
+                        // اگه ریت‌لیمیت (429) گرفتیم، صبر کن و دوباره تلاش کن
+                        if (resObj.response.status === 429 && attempt < MAX_429_RETRIES) {
+                            const retryAfter = parseFloat(resObj.response.headers.get('retry-after'));
+                            const backoff = Number.isFinite(retryAfter) && retryAfter > 0
+                                ? retryAfter * 1000
+                                : Math.max(intervalMs, 5000) * (attempt + 1);
+                            nextAllowedTime = Math.max(nextAllowedTime, Date.now() + backoff);
+                            continue;
+                        }
+                        break;
                     }
 
                     const { response, latency } = resObj;
@@ -1206,9 +1242,6 @@
 
                 sortResultsByStatus();
 
-                if (i < modelsList.length - 1) {
-                    await delay(1000);
-                }
             }
         }
 
