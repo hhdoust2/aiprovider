@@ -2,7 +2,7 @@
 <html lang="fa" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>مدیریت و تست API Keyها و ارائه‌دهنده‌ها</title>
     
     <!-- PWA Meta Tags & Manifest -->
@@ -39,7 +39,7 @@
             background: radial-gradient(1000px 500px at 50% -100px, #ffe8e0, transparent), var(--bg);
             color: var(--text-main);
             min-height: 100vh;
-            padding-bottom: 50px;
+            padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px));
         }
 
         .navbar {
@@ -75,6 +75,26 @@
             color: var(--primary);
             box-shadow: 0 2px 8px rgba(0,0,0,0.08);
         }
+
+        /* تب‌های ثابت پایین صفحه */
+        .bottom-nav {
+            position: fixed;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: 1050;
+            display: flex;
+            justify-content: center;
+            padding: 10px 12px calc(10px + env(safe-area-inset-bottom, 0px));
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-top: 1px solid var(--border);
+            box-shadow: 0 -4px 20px rgba(0,0,0,0.04);
+        }
+        .bottom-nav .nav-pills { width: 100%; max-width: 420px; }
+        .bottom-nav .nav-pills .nav-item { flex: 1 1 0; }
+        .bottom-nav .nav-pills .nav-link { width: 100%; text-align: center; padding: 10px 8px; white-space: nowrap; }
 
         .card {
             background-color: var(--card-bg);
@@ -328,20 +348,6 @@
                 <span>مدیریت API Key و سرویس‌ها</span>
             </a>
 
-            <!-- Tab Buttons Header -->
-            <ul class="nav nav-pills my-2 my-lg-0" id="mainTabs" role="tablist">
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link active" id="tab-manager-btn" data-bs-toggle="pill" data-bs-target="#tab-manager" type="button" role="tab">
-                        <i class="fa-solid fa-list-check me-1"></i> مدیریت سرویس‌ها
-                    </button>
-                </li>
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link" id="tab-tester-btn" data-bs-toggle="pill" data-bs-target="#tab-tester" type="button" role="tab">
-                        <i class="fa-solid fa-heart-pulse me-1"></i> تست سلامت API
-                    </button>
-                </li>
-            </ul>
-
             <div class="d-flex flex-wrap gap-2">
                 <button class="btn btn-outline-success btn-sm d-flex align-items-center gap-1" onclick="exportJSON()">
                     <i class="fa-solid fa-download"></i> خروجی JSON
@@ -357,9 +363,25 @@
         </div>
     </nav>
 
+    <!-- Bottom Tab Bar (ثابت) -->
+    <div class="bottom-nav">
+        <ul class="nav nav-pills" id="mainTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="tab-manager-btn" data-bs-toggle="pill" data-bs-target="#tab-manager" type="button" role="tab">
+                    <i class="fa-solid fa-list-check me-1"></i> مدیریت سرویس‌ها
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="tab-tester-btn" data-bs-toggle="pill" data-bs-target="#tab-tester" type="button" role="tab">
+                    <i class="fa-solid fa-heart-pulse me-1"></i> تست سلامت API
+                </button>
+            </li>
+        </ul>
+    </div>
+
     <div class="container">
         <!-- Toast Notification Container -->
-        <div id="toastContainer" class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 1100;"></div>
+        <div id="toastContainer" class="toast-container position-fixed end-0 p-3" style="z-index: 1100; bottom: calc(76px + env(safe-area-inset-bottom, 0px));"></div>
 
         <div class="tab-content" id="mainTabsContent">
             

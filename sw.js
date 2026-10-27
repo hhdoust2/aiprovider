@@ -15,7 +15,7 @@
 
 // هر بار که تغییر محسوسی توی فایل‌های اپ می‌دیم، این نسخه رو دستی بالا
 // می‌بریم تا کشِ قدیمی به‌طور کامل پاک بشه (نه فقط بازنویسیِ تدریجی).
-const CACHE_VERSION = 'aichat-shell-v3';
+const CACHE_VERSION = 'aichat-shell-v4';
 const APP_SHELL = [
     '/',
     '/index.html',
